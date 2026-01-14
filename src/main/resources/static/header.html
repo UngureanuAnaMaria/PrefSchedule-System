@@ -1,0 +1,200 @@
+<style>
+    :root {
+        --primary: #4361ee;
+        --secondary: #3f37c9;
+        --bg: #f8f9fa;
+        --text: #2b2d42;
+    }
+
+    .main-nav {
+        background: white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 0 20px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .nav-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 70px;
+    }
+
+    .nav-logo {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--primary);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .nav-tabs {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+
+    .nav-tab {
+        text-decoration: none;
+        color: #6c757d;
+        padding: 8px 15px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: 0.3s;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        background: none;
+    }
+
+    .nav-tab:hover {
+        background-color: #f1f4ff;
+        color: var(--primary);
+    }
+
+    /* Ascunde link-ul curent */
+    .nav-tab.current-page {
+        display: none !important;
+    }
+
+    .role-menu-group {
+        display: none;
+        gap: 5px;
+    }
+
+    /* Stiluri Mobile */
+    .mobile-toggle {
+        display: none;
+        font-size: 28px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--primary);
+        padding: 5px;
+    }
+
+    @media (max-width: 768px) {
+        .mobile-toggle { display: block; }
+
+        .nav-tabs {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            left: 0;
+            width: 100%;
+            background: white;
+            padding: 10px 0;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            gap: 0;
+        }
+
+        .nav-tabs.active { display: flex; }
+
+        .role-menu-group {
+            flex-direction: column;
+            width: 100%;
+            display: none; /* Va fi suprascris de JS */
+        }
+
+        .nav-tab {
+            width: 100%;
+            text-align: center;
+            padding: 15px 0;
+            border-radius: 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .nav-tab:last-child { border-bottom: none; }
+    }
+</style>
+
+<nav class="main-nav">
+    <div class="nav-container">
+        <a href="profile.html" class="nav-logo" id="logo-link">PrefSchedule</a>
+
+        <button class="mobile-toggle" id="menuBtn" onclick="toggleMobileMenu()">☰</button>
+
+        <div class="nav-tabs" id="navTabs">
+            <div id="student-menu" class="role-menu-group">
+                <a href="preferences.html" class="nav-tab">Course Preferences</a>
+                <a href="assignments-view.html" class="nav-tab">See Assignment</a>
+            </div>
+
+            <div id="instructor-menu" class="role-menu-group">
+                <a href="teaching-courses.html" class="nav-tab">Courses</a>
+            </div>
+
+            <div id="admin-menu" class="role-menu-group">
+                <a href="assignment.html" class="nav-tab">Assign</a>
+                <a href="create-users.html" class="nav-tab">Import Users</a>
+                <a href="manage-users.html" class="nav-tab">Manage Users</a>
+                <a href="manage-packs.html" class="nav-tab">Manage Packs</a>
+                <a href="manage-courses.html" class="nav-tab">Manage Courses</a>
+            </div>
+
+            <a href="profile.html" class="nav-tab">My Profile</a>
+            <button onclick="logout()" class="nav-tab" style="color: #f72585;">Logout</button>
+        </div>
+    </div>
+</nav>
+
+<script>
+    function toggleMobileMenu() {
+        const menu = document.getElementById('navTabs');
+        const btn = document.getElementById('menuBtn');
+        menu.classList.toggle('active');
+        btn.textContent = menu.classList.contains('active') ? '✕' : '☰';
+    }
+
+    (function() {
+        const token = localStorage.getItem('token') || localStorage.getItem('jwt_token');
+        const rolesStr = localStorage.getItem('roles');
+        const userRoles = rolesStr ? JSON.parse(rolesStr) : [];
+        const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+
+        // 1. Verificare Securitate
+        if (!token && currentPath !== 'index.html') {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // 2. Debug în Consolă (Cerut)
+        console.group("Navigation Debug");
+        console.log("Page:", currentPath);
+        console.log("User Roles:", userRoles);
+        console.log("Token Status:", !!token);
+        console.groupEnd();
+
+        // 3. Ascunde pagina curentă din meniu
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            if (tab.getAttribute('href') === currentPath) {
+                tab.classList.add('current-page');
+            }
+        });
+
+        // 4. Afișare Meniuri per Rol
+        const hasRole = (role) => userRoles.some(r => r === role || r === `ROLE_${role}`);
+
+        // Folosim un mic delay pentru a ne asigura că DOM-ul este complet injectat
+        setTimeout(() => {
+            const isMobile = window.innerWidth <= 768;
+            const displayType = isMobile ? 'flex' : 'flex'; // Ambele flex pentru structură
+
+            if (hasRole('STUDENT')) document.getElementById('student-menu').style.display = displayType;
+            if (hasRole('INSTRUCTOR')) document.getElementById('instructor-menu').style.display = displayType;
+            if (hasRole('ADMIN')) document.getElementById('admin-menu').style.display = displayType;
+        }, 50);
+    })();
+
+    function logout() {
+        localStorage.clear();
+        window.location.replace('index.html');
+    }
+</script>

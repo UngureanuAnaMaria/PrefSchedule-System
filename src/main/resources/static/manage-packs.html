@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Packs | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #4361ee; --danger: #f72585; --dark: #2b2d42; --light: #f8f9fa; }
+        /* Elimină marginile body pentru a lipi header-ul de sus */
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+
+        /* Containerul de conținut vine sub header */
+        .main-content { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .pack-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; border-bottom: 1px solid #eee;
+        }
+        .pack-item:last-child { border-bottom: none; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<div class="main-content">
+    <div class="card">
+        <h1>Course Packs</h1>
+        <div id="packsList"></div>
+    </div>
+</div>
+
+<script>
+    // Corecție URL: PackController are @RequestMapping("/api/packs")
+    async function loadPacks() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/packs`);
+            const packs = await res.json();
+            document.getElementById('packsList').innerHTML = packs.map(p => `
+                <div class="pack-item">
+                    <div>
+                        <div style="font-weight:700; color:var(--primary)">${p.name}</div>
+                        <div style="font-size:0.85em; color:var(--gray)">Year ${p.year} • Sem ${p.semester}</div>
+                    </div>
+                    <button class="btn-delete" onclick="deletePack(${p.id})">Delete</button>
+                </div>
+            `).join('');
+        } catch (e) { console.error("Error loading packs", e); }
+    }
+
+    async function deletePack(id) {
+        if (!confirm("Delete this pack? This will delete all associated courses!")) return;
+        const res = await fetch(`http://localhost:8080/api/packs/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        if (res.ok) loadPacks();
+    }
+
+    fetch('header.html').then(r => r.text()).then(d => document.getElementById('header-placeholder').innerHTML = d);
+    loadPacks();
+</script>
+</body>
+</html>

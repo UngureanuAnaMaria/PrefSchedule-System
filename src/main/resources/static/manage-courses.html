@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Courses | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #4361ee; --danger: #f72585; --dark: #2b2d42; --light: #f8f9fa; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+
+        .main-content { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 15px; border-bottom: 1px solid #eee; }
+        th { background: var(--light); color: var(--dark); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
+        .btn-delete { background: none; border: none; color: var(--danger); font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<div class="main-content">
+    <div class="card">
+        <h1>Curriculum Management</h1>
+        <table>
+            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Course Name</th>
+                <th>Type</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="coursesList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Corecție URL: CourseController are @RequestMapping("/api/courses")
+    async function loadCourses() {
+        const res = await fetch(`http://localhost:8080/api/courses`);
+        const courses = await res.json();
+        document.getElementById('coursesList').innerHTML = courses.map(c => `
+            <tr>
+                <td><strong>${c.code}</strong></td>
+                <td>${c.name}</td>
+                <td><span style="font-size:0.8em; padding:4px 8px; border-radius:5px; background:var(--light)">${c.type}</span></td>
+                <td><button class="btn-delete" onclick="deleteCourse(${c.id})">Remove</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function deleteCourse(id) {
+        if (!confirm("Remove this course?")) return;
+        const res = await fetch(`http://localhost:8080/api/courses/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        if (res.ok) loadCourses();
+    }
+
+    fetch('header.html').then(r => r.text()).then(d => document.getElementById('header-placeholder').innerHTML = d);
+    loadCourses();
+</script>
+</body>
+</html>

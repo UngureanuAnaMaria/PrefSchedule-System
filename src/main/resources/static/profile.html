@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | PrefSchedule</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --dark: #2b2d42;
+            --light-bg: #f8f9fa;
+            --border: #e9ecef;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            color: var(--dark);
+        }
+
+        .profile-wrapper {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 40px;
+            color: white;
+            text-align: center;
+        }
+
+        .profile-header h1 { margin: 0; font-size: 28px; }
+
+        .role-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .profile-body { padding: 40px; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .info-group {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        .info-group label {
+            display: block;
+            color: #8d99ae;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-group span {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .full-width { grid-column: 1 / -1; }
+
+        .section-divider {
+            grid-column: 1 / -1;
+            margin-top: 20px;
+            font-size: 14px;
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="profile-wrapper">
+    <div class="profile-card">
+        <div class="profile-header">
+            <h1 id="user-display-name">Loading...</h1>
+            <div id="user-display-role" class="role-badge">-</div>
+        </div>
+
+        <div class="profile-body">
+            <div class="info-grid">
+                <div class="info-group">
+                    <label>Username</label>
+                    <span id="info-username">-</span>
+                </div>
+                <div class="info-group">
+                    <label>Email</label>
+                    <span id="info-email">-</span>
+                </div>
+
+                <div id="dynamic-content" class="info-grid full-width" style="display: contents;">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Load Navigation Header with script execution fix
+    fetch('header.html')
+        .then(response => response.text())
+        .then(data => {
+            const placeholder = document.getElementById('header-placeholder');
+            placeholder.innerHTML = data;
+
+            const scripts = placeholder.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                document.body.appendChild(newScript);
+            });
+        })
+        .catch(err => console.error("Could not load header:", err));
+
+    // 2. Load Profile Data
+    async function loadProfile() {
+        const token = localStorage.getItem('token');
+        const username = localStorage.getItem('username');
+        const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+
+        if (!token || !username) {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        let apiPath = '';
+        if (roles.includes('STUDENT') || roles.includes('ROLE_STUDENT')) {
+            apiPath = `/api/v2/students/username/${username}`;
+        } else if (roles.includes('INSTRUCTOR') || roles.includes('ROLE_INSTRUCTOR')) {
+            apiPath = `/api/instructors/username/${username}`;
+        } else if (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN')) {
+            apiPath = `/api/administrators/username/${username}`;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:8080${apiPath}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+
+                // Standard Info
+                document.getElementById('user-display-name').textContent = user.name;
+                document.getElementById('user-display-role').textContent = roles[0].replace('ROLE_', '');
+                document.getElementById('info-username').textContent = user.username;
+                document.getElementById('info-email').textContent = user.email;
+
+                // Role-Specific Info
+                const dynamicDiv = document.getElementById('dynamic-content');
+
+                // Show academic details ONLY for Students
+                if (roles.some(r => r.includes('STUDENT'))) {
+                    dynamicDiv.innerHTML = `
+                        <div class="section-divider">Academic Information</div>
+                        <div class="info-group">
+                            <label>Student Code</label>
+                            <span>${user.code}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Study Year</label>
+                            <span>Year ${user.year}</span>
+                        </div>
+                    `;
+                } else {
+                    // For Instructors and Admins, we leave dynamic-content empty
+                    // since you want to handle their specific tasks elsewhere.
+                    dynamicDiv.innerHTML = '';
+                }
+            } else {
+                console.error("Profile fetch failed:", response.status);
+            }
+        } catch (error) {
+            console.error("Network error:", error);
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+</body>
+</html>

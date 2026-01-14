@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Assignments | PrefSchedule</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #2ec4b6;
+            --dark: #2b2d42;
+            --gray: #8d99ae;
+            --light: #f8f9fa;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header.page-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h1 { font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+
+        /* Pack Card Styles */
+        .pack-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .pack-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: transform 0.2s;
+        }
+
+        .pack-card:hover { transform: translateY(-5px); }
+
+        .pack-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 10px 0;
+        }
+
+        .pack-meta {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .course-tags {
+            flex-grow: 1;
+            margin-bottom: 25px;
+        }
+
+        .course-tag {
+            display: inline-block;
+            background: var(--light);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin: 3px;
+            color: var(--dark);
+            border: 1px solid #eee;
+        }
+
+        /* Buttons */
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-assign {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-assign:hover { background-color: #3046bc; }
+
+        .btn-see-more {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-see-more:hover { background-color: #24a196; }
+
+        button:disabled {
+            background-color: #e0e0e0;
+            color: #a0a0a0;
+            cursor: not-allowed;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            margin: 5% auto;
+            padding: 40px;
+            border-radius: 25px;
+            width: 70%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--light);
+            padding-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px;
+            background-color: var(--light);
+            color: var(--gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--light);
+            font-size: 0.95rem;
+        }
+
+        .close-btn {
+            background: none;
+            color: var(--gray);
+            font-size: 2rem;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+        }
+
+        .close-btn:hover { color: var(--dark); }
+    </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="container">
+    <header class="page-header">
+        <h1>Optional Course Allocations</h1>
+        <p style="color: var(--gray)">Manage student matching for optional packs</p>
+    </header>
+
+    <div id="packsContainer" class="pack-grid">
+    </div>
+</div>
+
+<div id="resultsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle" style="margin:0">Allocation Results</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <table id="resultsTable">
+            <thead>
+            <tr>
+                <th>Student Code</th>
+                <th>Assigned Course</th>
+                <th>Student Pref. Rank</th>
+                <th>Course Pref. Rank</th>
+            </tr>
+            </thead>
+            <tbody id="resultsBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 1. Header loading
+    fetch('header.html')
+        .then(r => r.text())
+        .then(d => document.getElementById('header-placeholder').innerHTML = d)
+        .catch(err => console.error("Error loading header:", err));
+
+    const BASE_URL = "http://localhost:8080/api";
+
+    document.addEventListener('DOMContentLoaded', fetchPacks);
+
+    // 2. Fetch all packs and check for existing assignments
+    async function fetchPacks() {
+        try {
+            const response = await fetch(`${BASE_URL}/packs`);
+            const packs = await response.json();
+            const container = document.getElementById('packsContainer');
+            container.innerHTML = '';
+
+            for (const pack of packs) {
+                // Check if assignments already exist for this pack to toggle button
+                const assignRes = await fetch(`${BASE_URL}/packs/${pack.id}/assignments`);
+                const assignments = await assignRes.json();
+                const hasResults = assignments.length > 0;
+
+                const card = document.createElement('div');
+                card.className = 'pack-card';
+                card.innerHTML = `
+                    <h3 class="pack-title">${pack.name}</h3>
+                    <div class="pack-meta">
+                        <span>Year: ${pack.year}</span>
+                        <span>Semester: ${pack.semester}</span>
+                    </div>
+                    <div class="course-tags">
+                        ${pack.courses.map(c => `<span class="course-tag">${c.code}</span>`).join('')}
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-assign" onclick="runMatch(${pack.id}, event)">Run Assign</button>
+                        <button class="btn-see-more" id="see-more-${pack.id}"
+                                ${!hasResults ? 'disabled' : ''}
+                                onclick="viewResults(${pack.id}, '${pack.name}')">See More</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        } catch (error) {
+            console.error("Error fetching packs:", error);
+        }
+    }
+
+    // 3. Trigger matching algorithm
+    async function runMatch(packId, event) {
+        if (!confirm("Start the Gale-Shapley matching? This will overwrite previous results for this pack.")) return;
+
+        const btn = event.currentTarget;
+        const originalText = btn.innerText;
+
+        try {
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            const response = await fetch(`${BASE_URL}/packs/${packId}/match`, { method: 'POST' });
+            const result = await response.json();
+
+            if (result.success) {
+                alert("Matching completed successfully!");
+                await fetchPacks(); // Refresh cards to enable "See More" button
+            } else {
+                alert("Matching failed: " + (result.message || "Unknown error"));
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        } catch (error) {
+            console.error("Match error:", error);
+            alert("Connection error. Is the server running?");
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
+
+    // 4. View results in modal
+    async function viewResults(packId, packName) {
+        try {
+            const response = await fetch(`${BASE_URL}/packs/${packId}/assignments`);
+            const data = await response.json();
+
+            document.getElementById('modalTitle').innerText = `${packName} - Allocation Results`;
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            data.forEach(asgn => {
+                // If studentPreferenceRank is 0, it means the student had no preferences
+                // and was auto-assigned to a course with capacity
+                const prefText = asgn.studentPreferenceRank === 0
+                    ? '<span style="color:orange; font-weight:600;">Auto-assigned</span>'
+                    : `Rank ${asgn.studentPreferenceRank}`;
+
+                const row = `
+                    <tr>
+                        <td><strong>${asgn.studentCode}</strong></td>
+                        <td>${asgn.courseCode}</td>
+                        <td>${prefText}</td>
+                        <td>Rank ${asgn.coursePreferenceRank}</td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+
+            document.getElementById('resultsModal').style.display = 'block';
+        } catch (error) {
+            console.error("Error viewing results:", error);
+            alert("Could not load assignment details.");
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('resultsModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+        const modal = document.getElementById('resultsModal');
+        if (event.target == modal) closeModal();
+    }
+</script>
+
+</body>
+</html>

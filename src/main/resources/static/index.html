@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | PrefSchedule</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee; --secondary: #3f37c9; --bg: #f8f9fa; --dark: #2b2d42;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e0e4e9 100%);
+            margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh;
+        }
+        .auth-container {
+            background: white; width: 100%; max-width: 400px; padding: 40px;
+            border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        .logo { font-size: 28px; font-weight: 800; color: var(--primary); text-align: center; margin-bottom: 8px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
+        .input-group input {
+            width: 100%; padding: 12px; border: 2px solid #edf2f7; border-radius: 12px;
+            box-sizing: border-box; transition: all 0.3s;
+        }
+        .input-group input:focus { border-color: var(--primary); outline: none; }
+        .btn-auth {
+            width: 100%; padding: 14px; background: var(--primary); color: white;
+            border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.3s;
+        }
+        .btn-auth:hover { background: var(--secondary); transform: translateY(-2px); }
+        .error-msg { color: #f72585; background: #ffeef2; padding: 12px; border-radius: 8px; margin-top: 20px; font-size: 13px; display: none; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="auth-container">
+    <div class="logo">PrefSchedule</div>
+    <p class="subtitle">Academic Course Preference & Assignation System</p>
+
+    <form id="loginForm">
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="loginUser" placeholder="Enter username" required>
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="loginPass" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-auth">Sign In</button>
+    </form>
+
+    <div id="authError" class="error-msg"></div>
+</div>
+
+<script>
+    document.getElementById('loginForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const user = document.getElementById('loginUser').value;
+        const pass = document.getElementById('loginPass').value;
+        const errorDiv = document.getElementById('authError');
+
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // IMPORTANT: Salvează tot ce returnează backend-ul (token, username, roles)
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('roles', JSON.stringify(data.roles));
+
+                // Redirecționare în funcție de rol (exemplu: prima pagină pentru toți)
+                window.location.href = 'profile.html';
+            } else {
+                errorDiv.textContent = "Invalid credentials.";
+                errorDiv.style.display = 'block';
+            }
+        } catch (err) {
+            errorDiv.textContent = "Server error. Is the backend running?";
+            errorDiv.style.display = 'block';
+        }
+    };
+</script>
+
+</body>
+</html>

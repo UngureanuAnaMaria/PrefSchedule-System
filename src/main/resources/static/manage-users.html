@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Users | Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #4361ee; --danger: #f72585; --dark: #2b2d42; --light: #f8f9fa; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; margin: 0; }
+        .container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: var(--light); color: #667; text-transform: uppercase; font-size: 0.8rem; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+<div class="container">
+    <h1>User Management</h1>
+
+    <div class="card">
+        <h2>Students</h2>
+        <table id="studentsTable">
+            <thead><tr><th>Code</th><th>Name</th><th>Year</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Instructors</h2>
+        <table id="instructorsTable">
+            <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // URL-ul de bază fără /v1
+    const API_BASE = "http://localhost:8080/api";
+    const token = localStorage.getItem('token');
+
+    async function loadData() {
+        try {
+            // Incarcare Studenti (V2 HATEOAS conform setărilor tale anterioare)
+            const sRes = await fetch(`${API_BASE}/v2/students`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const sData = await sRes.json();
+            const students = sData._embedded ? sData._embedded.studentList : [];
+
+            const sBody = document.querySelector("#studentsTable tbody");
+            sBody.innerHTML = students.map(s => `
+                <tr>
+                    <td>${s.code}</td><td>${s.name}</td><td>${s.year}</td>
+                    <td><button class="btn-delete" onclick="deleteUser('students', ${s.id})">Delete</button></td>
+                </tr>`).join('');
+
+            // Incarcare Instructori - Apelează direct /api/instructors
+            const iRes = await fetch(`${API_BASE}/instructors`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!iRes.ok) throw new Error("Failed to fetch instructors");
+
+            const instructors = await iRes.json(); // Apelează getAllInstructors()
+            const iBody = document.querySelector("#instructorsTable tbody");
+            iBody.innerHTML = instructors.map(i => `
+                <tr>
+                    <td>${i.username}</td><td>${i.name}</td><td>${i.email}</td>
+                    <td><button class="btn-delete" onclick="deleteUser('instructors', ${i.id})">Delete</button></td>
+                </tr>`).join('');
+        } catch (error) {
+            console.error("Error loading data:", error);
+        }
+    }
+
+    async function deleteUser(type, id) {
+        if (!confirm(`Are you sure you want to delete this ${type.slice(0,-1)}?`)) return;
+
+        // Apelează endpoint-ul de DELETE definit în InstructorController
+        // Exemplu: DELETE http://localhost:8080/api/instructors/{id}
+        const res = await fetch(`${API_BASE}/${type}/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            loadData();
+        } else {
+            alert("Error deleting user.");
+        }
+    }
+
+    // Load header and initial data
+    fetch('header.html')
+        .then(r => r.text())
+        .then(d => document.getElementById('header-placeholder').innerHTML = d)
+        .catch(err => console.log("Header not found, continuing..."));
+
+    loadData();
+</script>
+</body>
+</html>

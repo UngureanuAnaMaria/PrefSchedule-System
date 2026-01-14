@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Assignments | PrefSchedule</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #2ec4b6;
+            --warning: #ff9f1c;
+            --gray: #8d99ae;
+            --light: #f8f9fa;
+            --dark: #2b2d42;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .assignment-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 6px solid #ddd;
+            transition: transform 0.2s;
+        }
+
+        .assignment-card.assigned {
+            border-left-color: var(--success);
+        }
+
+        .assignment-card.pending {
+            border-left-color: var(--warning);
+        }
+
+        .pack-info h3 {
+            margin: 0 0 5px 0;
+            color: var(--dark);
+        }
+
+        .pack-info p {
+            margin: 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .status-badge.assigned {
+            background-color: #e7f9f0;
+            color: var(--success);
+        }
+
+        .status-badge.pending {
+            background-color: #fff4e6;
+            color: var(--warning);
+        }
+
+        .course-result {
+            text-align: right;
+        }
+
+        .course-name {
+            display: block;
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 50px;
+            color: var(--gray);
+        }
+    </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="main-container">
+    <header class="page-header">
+        <h1>My Course Assignments</h1>
+        <p>View your final allocations for each optional pack</p>
+    </header>
+
+    <div id="loading" class="loading-spinner">Loading assignments...</div>
+    <div id="assignmentsList"></div>
+</div>
+
+<script>
+    // Incarcare Header
+    fetch('header.html')
+        .then(r => r.text())
+        .then(d => document.getElementById('header-placeholder').innerHTML = d);
+
+    const BASE_URL = "http://localhost:8080/api";
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+        const username = localStorage.getItem('username');
+        const token = localStorage.getItem('token');
+
+        try {
+            // 1. Obtinem datele studentului (inclusiv codul necesar pentru cautare)
+            const studentRes = await fetch(`${BASE_URL}/v2/students/username/${username}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const student = await studentRes.json();
+            const studentCode = student.code;
+
+            // 2. Obtinem toate pachetele din anul studentului
+            const packsRes = await fetch(`${BASE_URL}/packs/year/${student.year}`);
+            const packs = await packsRes.json();
+
+            // 3. Obtinem toate asignările efectuate pentru acest student
+            const assignmentsRes = await fetch(`${BASE_URL}/assignments/student/${studentCode}`);
+            const assignments = await assignmentsRes.json();
+
+            renderAssignments(packs, assignments);
+        } catch (error) {
+            console.error("Error loading assignments:", error);
+            document.getElementById('loading').innerHTML = "Error loading data. Please try again.";
+        }
+    }
+
+    function renderAssignments(packs, assignments) {
+        const container = document.getElementById('assignmentsList');
+        const loading = document.getElementById('loading');
+        loading.style.display = 'none';
+
+        container.innerHTML = '';
+
+        if (packs.length === 0) {
+            container.innerHTML = '<p style="text-align:center;">No optional packs found for your year.</p>';
+            return;
+        }
+
+        packs.forEach(pack => {
+            // Cautam daca exista o asignare pentru acest pachet
+            const assignment = assignments.find(a => a.packId === pack.id);
+            const isAssigned = !!assignment;
+
+            const card = document.createElement('div');
+            card.className = `assignment-card ${isAssigned ? 'assigned' : 'pending'}`;
+
+            card.innerHTML = `
+                <div class="pack-info">
+                    <h3>${pack.name}</h3>
+                    <p>Semester ${pack.semester}</p>
+                </div>
+                <div class="course-result">
+                    ${isAssigned ? `
+                        <span class="status-badge assigned">Allocated</span>
+                        <span class="course-name">${assignment.courseCode}</span>
+                        <small style="color: var(--gray)">Rank: ${assignment.studentPreferenceRank === 0 ? 'Auto' : assignment.studentPreferenceRank}</small>
+                    ` : `
+                        <span class="status-badge pending">Pending</span>
+                        <p style="font-size: 0.8rem; color: var(--gray); margin-top: 5px;">Not yet assigned</p>
+                    `}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+</script>
+</body>
+</html>

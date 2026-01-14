@@ -1,0 +1,37 @@
+name: Java CI with Maven and Docker
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and Test with Maven
+        # Verifică dacă proiectul se compilează și testele unitare trec
+        run: mvn clean verify -DskipTests=false
+
+  docker-image-check:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        # Verifica daca Dockerfile-ul este valid și imaginea se poate construi
+        run: docker build -t prefschedule-app:test .

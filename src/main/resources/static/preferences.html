@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Preferences | PrefSchedule</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee; --secondary: #3f37c9; --success: #2ec4b6;
+            --danger: #f72585; --dark: #2b2d42; --gray: #8d99ae; --light: #f8f9fa;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; margin: 0; line-height: 1.6; }
+        .main-container { max-width: 900px; margin: 0 auto; padding: 20px 20px 40px; }
+
+        .student-hero {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white; padding: 30px; border-radius: 20px; margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.15); display: none;
+        }
+
+        .submission-status-card {
+            background: white; padding: 40px; border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px; display: none;
+        }
+
+        .status-header { text-align: center; margin-bottom: 30px; }
+        .status-icon {
+            width: 50px; height: 50px; background: #e7f9f0; color: var(--success);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 15px; font-size: 24px;
+        }
+
+        .submitted-pack-group { margin-bottom: 25px; border-radius: 15px; padding: 20px; background: var(--light); border-left: 5px solid var(--primary); }
+        .submitted-pack-name { font-weight: 700; color: var(--primary); font-size: 0.9em; text-transform: uppercase; margin-bottom: 12px; display: block; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .submitted-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #ccc; }
+        .submitted-item:last-child { border-bottom: none; }
+
+        .pack-card { background: white; border-radius: 20px; padding: 30px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .pack-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--light); padding-bottom: 15px; margin-bottom: 20px; }
+        .pack-name { font-size: 1.3em; font-weight: 700; color: var(--primary); }
+
+        .pack-error { color: var(--danger); font-size: 0.85em; font-weight: 600; margin-top: 15px; display: none; padding: 10px; background: #fff0f3; border-radius: 8px; border: 1px solid #ffd6dc; }
+
+        .course-row { display: grid; grid-template-columns: 1fr auto; padding: 15px; background: var(--light); border-radius: 12px; margin-bottom: 10px; align-items: center; }
+        .priority-input { width: 60px; padding: 10px; border: 2px solid #ddd; border-radius: 10px; text-align: center; font-weight: 700; }
+        .priority-input.input-error { border-color: var(--danger); background-color: #fff0f3; }
+
+        .btn-submit { background: var(--primary); color: white; padding: 18px; border: none; border-radius: 15px; font-size: 1.1em; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 8px 20px rgba(67, 97, 238, 0.2); }
+        .btn-submit:disabled { background: var(--gray); cursor: not-allowed; }
+
+        .priority-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.85em; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<div class="main-container">
+    <div id="loading" style="text-align: center; padding: 60px; color: var(--gray);">
+        <p>Loading student profile...</p>
+    </div>
+
+    <div id="student-hero" class="student-hero">
+        <h2 id="student-name" style="margin:0 0 5px 0">Hello!</h2>
+        <div id="student-details" style="opacity: 0.9; font-size: 0.9em;"></div>
+    </div>
+
+    <div id="alreadySubmittedMsg" class="submission-status-card">
+        <div class="status-header">
+            <div class="status-icon">✓</div>
+            <h2 style="margin:0">Preferences Saved</h2>
+            <p style="color: var(--gray)">Below are your selected options grouped by course packs.</p>
+        </div>
+        <div id="submittedPacksContainer"></div>
+    </div>
+
+    <form id="preferencesForm" style="display:none;">
+        <div id="packsList"></div>
+        <button type="button" class="btn-submit" id="submitBtn" onclick="submitPreferences()">Confirm Selection</button>
+    </form>
+</div>
+
+<script>
+    fetch('header.html').then(r => r.text()).then(d => document.getElementById('header-placeholder').innerHTML = d).catch(() => {});
+
+    let currentStudentId = null;
+    let allPacks = [];
+
+    window.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+        const token = localStorage.getItem('token');
+        const username = localStorage.getItem('username');
+
+        if (!token) {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        try {
+            const studentRes = await fetch(`http://localhost:8080/api/v2/students/username/${username}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!studentRes.ok) throw new Error('Student session not found.');
+            const student = await studentRes.json();
+            currentStudentId = student.id;
+
+            document.getElementById('student-name').textContent = `Hello, ${student.name}!`;
+            document.getElementById('student-details').innerHTML = `Year ${student.year} &bull; Code: ${student.code}`;
+            document.getElementById('student-hero').style.display = 'block';
+
+            const packsRes = await fetch(`http://localhost:8080/api/packs/year/${student.year}`);
+            allPacks = await packsRes.json();
+
+            const prefRes = await fetch(`http://localhost:8080/api/student-preferences/student/${currentStudentId}`);
+            const existingPrefs = await prefRes.json();
+
+            if (existingPrefs && existingPrefs.length > 0) {
+                renderGroupedSubmittedView(existingPrefs);
+            } else {
+                renderPacks(allPacks);
+                document.getElementById('preferencesForm').style.display = 'block';
+            }
+            document.getElementById('loading').style.display = 'none';
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('loading').innerHTML = `<p style="color:var(--danger)">Error: ${error.message}</p>`;
+        }
+    }
+
+    function renderGroupedSubmittedView(prefs) {
+        const container = document.getElementById('submittedPacksContainer');
+        let html = '';
+
+        allPacks.forEach(pack => {
+            const courseIdsInPack = pack.courses.map(c => c.id);
+            const filteredPrefs = prefs.filter(p => courseIdsInPack.includes(p.courseId));
+
+            if (filteredPrefs.length > 0) {
+                // Sortăm local pentru afișarea UI pachet cu pachet
+                filteredPrefs.sort((a, b) => a.priority - b.priority);
+
+                html += `
+                    <div class="submitted-pack-group">
+                        <span class="submitted-pack-name">${pack.name}</span>
+                        ${filteredPrefs.map(p => `
+                            <div class="submitted-item">
+                                <span style="font-weight:600">${p.courseName}</span>
+                                <span class="priority-badge">Priority ${p.priority}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html || '<p>No preferences found.</p>';
+        document.getElementById('alreadySubmittedMsg').style.display = 'block';
+    }
+
+    function renderPacks(packs) {
+        const list = document.getElementById('packsList');
+        list.innerHTML = packs.map(pack => `
+            <div class="pack-card" id="pack-${pack.id}">
+                <div class="pack-header">
+                    <span class="pack-name">${pack.name}</span>
+                    <span style="font-size:0.8em; color:var(--gray)">Semester ${pack.semester}</span>
+                </div>
+                ${pack.courses.map(course => `
+                    <div class="course-row">
+                        <div style="font-weight:600">${course.name} (${course.code})</div>
+                        <input type="number" class="priority-input"
+                               placeholder="-"
+                               data-course-id="${course.id}"
+                               data-course-code="${course.code}"
+                               data-pack-name="${pack.name}">
+                    </div>
+                `).join('')}
+                <div class="pack-error" id="error-pack-${pack.id}"></div>
+            </div>
+        `).join('');
+    }
+
+async function submitPreferences() {
+    const packCards = document.querySelectorAll('.pack-card');
+    const allPrefs = [];
+    let globalValid = true;
+
+    document.querySelectorAll('.pack-error').forEach(e => e.style.display = 'none');
+    document.querySelectorAll('.priority-input').forEach(i => i.classList.remove('input-error'));
+
+    for (const card of packCards) {
+        const packId = card.id.split('-')[1];
+        const errorDiv = document.getElementById(`error-pack-${packId}`);
+        const inputs = Array.from(card.querySelectorAll('.priority-input'));
+        const values = inputs.map(i => i.value.trim()).filter(v => v !== "").map(Number);
+
+        if (values.length < inputs.length) {
+            showPackError(errorDiv, inputs, "Error: Assign a priority to ALL courses in this pack.");
+            globalValid = false;
+            continue;
+        }
+
+        const sortedValues = [...values].sort((a, b) => a - b);
+        for (let i = 0; i < sortedValues.length; i++) {
+            if (sortedValues[i] !== (i + 1)) {
+                showPackError(errorDiv, inputs, `Error: Use unique numbers from 1 to ${inputs.length}.`);
+                globalValid = false;
+                break;
+            }
+        }
+
+        if (!globalValid) break;
+
+        inputs.forEach(input => {
+            allPrefs.push({
+                studentId: currentStudentId,
+                courseId: parseInt(input.dataset.courseId),
+                courseCode: input.dataset.courseCode,
+                priority: parseInt(input.value),
+                packName: input.dataset.packName
+            });
+        });
+    }
+
+    if (!globalValid) return;
+
+    // --- SORTARE CORECTĂ GRUPATĂ PE PACHETE ---
+    const groupedByPack = {};
+    allPrefs.forEach(pref => {
+        if (!groupedByPack[pref.packName]) {
+            groupedByPack[pref.packName] = [];
+        }
+        groupedByPack[pref.packName].push(pref);
+    });
+
+    const sortedPrefs = [];
+    Object.keys(groupedByPack).sort().forEach(packName => {
+        const packPrefs = groupedByPack[packName];
+        packPrefs.sort((a, b) => a.priority - b.priority);
+        sortedPrefs.push(...packPrefs);
+    });
+
+    console.log("Date de trimis (ordonate corect pe pachet):", sortedPrefs);
+
+    try {
+        document.getElementById('submitBtn').disabled = true;
+
+        for (const pref of sortedPrefs) {
+            const response = await fetch('http://localhost:8080/api/student-preferences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: pref.studentId,
+                    courseId: pref.courseId,
+                    priority: pref.priority
+                })
+            });
+
+            if (!response.ok) {
+                const msg = await response.text();
+                throw new Error(msg || "Server error while saving.");
+            }
+            console.log(`Success: ${pref.courseCode} saved with Priority ${pref.priority}`);
+        }
+
+        alert("Preferences saved successfully!");
+        window.location.reload();
+
+    } catch (e) {
+        document.getElementById('submitBtn').disabled = false;
+        alert("Error: " + e.message);
+    }
+}
+
+    function showPackError(div, inputs, msg) {
+        div.textContent = msg;
+        div.style.display = 'block';
+        inputs.forEach(i => i.classList.add('input-error'));
+        div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+</script>
+</body>
+</html>
